@@ -161,8 +161,9 @@ def train_agent(agent_id, param_queue, reward_queue, adv_queue, gradient_queue):
             while not done:
                 
                 node, use_exec = invoke_model(actor_agent, obs, exp)
+                # print(node, use_exec)
 
-                obs, reward, done = env.step(node, use_exec)
+                obs, reward, done, curr_time = env.step(node, use_exec)
 
                 if node is not None:
                     # valid action, store reward and time
@@ -176,7 +177,7 @@ def train_agent(agent_id, param_queue, reward_queue, adv_queue, gradient_queue):
                     # avoid the negative reward
                     exp['reward'][-1] += reward
                     exp['wall_time'][-1] = env.wall_time.curr_time
-
+            print(len(exp['node_inputs']), len(exp['reward']))
             # report reward signals to master
             assert len(exp['node_inputs']) == len(exp['reward'])
             reward_queue.put(

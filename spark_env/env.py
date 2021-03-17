@@ -221,7 +221,7 @@ class Environment(object):
                 self.backup_schedule(executor)
 
     def step(self, next_node, limit):
-
+        # print('current time', self.wall_time.curr_time)
         # mark the node as selected
         assert next_node not in self.node_selected
         self.node_selected.add(next_node)
@@ -237,20 +237,24 @@ class Environment(object):
         else:
             use_exec = limit
         assert use_exec > 0
+        # print('num_source_exec {} | use_exec {}'.format(self.num_source_exec, use_exec))
 
         self.exec_commit.add(source, next_node, use_exec)
         # deduct the executors that know the destination
         self.num_source_exec -= use_exec
         assert self.num_source_exec >= 0
+        # print('-> num_source_exec {} | use_exec {}'.format(self.num_source_exec, use_exec))
 
         if self.num_source_exec == 0:
             # now a new scheduling round, clean up node selection
             self.node_selected.clear()
             # all commitments are made, now schedule free executors
             self.schedule()
-
+            # print('scheduled')
+        # print('[init] current time (after scheduled)', self.wall_time.curr_time)
         # Now run to the next event in the virtual timeline
         while len(self.timeline) > 0 and self.num_source_exec == 0:
+            # print('[run] current time', self.wall_time.curr_time)
             # consult agent by putting executors in source_exec
 
             new_time, obj = self.timeline.pop()
@@ -284,6 +288,7 @@ class Environment(object):
                     node.job_dag.completed = True
                     node.job_dag.completion_time = self.wall_time.curr_time
                     self.remove_job(node.job_dag)
+                # print('[run] current time (1 update?)', self.wall_time.curr_time)
 
             elif isinstance(obj, JobDAG):  # new job arrival event
                 job_dag = obj
@@ -301,6 +306,7 @@ class Environment(object):
                     self.source_job = None
                     self.num_source_exec = \
                         len(self.free_executors[None])
+                # print('[run] current time (2 update?)', self.wall_time.curr_time)
 
             elif isinstance(obj, Executor):  # executor arrival event
                 executor = obj
@@ -326,11 +332,12 @@ class Environment(object):
                     # by the time the executor arrives, use
                     # backup logic
                     self.backup_schedule(executor)
+                # print('[run] current time (3 update?)', self.wall_time.curr_time)
 
             else:
                 print("illegal event type")
                 exit(1)
-
+        # print('current time (after event)', self.wall_time.curr_time)
         # compute reward
         reward = self.reward_calculator.get_reward(
             self.job_dags, self.wall_time.curr_time)
@@ -344,7 +351,7 @@ class Environment(object):
             assert self.wall_time.curr_time >= self.max_time or \
                    len(self.job_dags) == 0
 
-        return self.observe(), reward, done
+        return self.observe(), reward, done, self.wall_time.curr_time
 
     def remove_job(self, job_dag):
         for executor in list(job_dag.executors):
